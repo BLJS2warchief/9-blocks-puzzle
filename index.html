@@ -1,0 +1,303 @@
+<html>
+<head>
+  <link rel="icon" href="e72757b9129ee3cb7bf7ebb7c8b4e8d6.png">
+  <title>Puzzle-Remastered</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css" href="newpuzzle.css">
+  <meta name="google-signin-client_id_8000" content="xoxoxox">
+  <meta name="google-signin-client_id" content="xoxoxox">
+  <script src="https://apis.google.com/js/platform.js" async defer></script>
+<script>
+  window.addEventListener("orientationchange", function(e) {
+        if(window.innerHeight < window.innerWidth){
+          alert("Please use Landscape!");
+        }
+      });
+</script>
+<script>
+// Global variales declaration and
+// Initial variable assignments.
+prompt = "<font color=rgb(8, 41, 13)> INFO: Click a number around the blank space to move it ...</font>";
+guest = "<font color=crimson> Welcome Guest, </font>";
+invalid ="<font color=red> ERROR: You can not move that number ...</font>";
+finish ="<font color=000cc0> &gt;CONGRATULATIONS&lt; </font>";
+userMsg = guest;
+userIdToken = "guest";
+buttonClass = "gameButton3";
+
+urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('debug')) debugVar = "&debug=1";
+else debugVar = "";
+
+
+stepCount = 0;
+inGame = true;
+
+// Inputs: No of rows, No of columns
+// Output: true  - if a new game is initialized
+//         false - if user not confirmed
+// Steps:
+//   Get user confirmation if game is in progress.
+//   Initialize game settings variables
+//   Start the Elapsed Time counter
+//   Set Welcome, Status messages
+//   Draw the requested Game
+//
+function initialize(row, col) {
+
+  stepsCount.value=stepCount;
+
+  if (inGame && stepCount != 0)
+    if (!confirm("Do you really want to clear current game?"))
+      return false;
+// if stepcount > 0 and not confirmed to reset thecurrent game, return without any change
+  stepCount = 0
+  gameRows = row; gameCols = col; buttonClass = "gameButton" + gameRows;
+
+  blankPos=1; inGame = true;
+  startTime = Date.now();
+  myTimer = setInterval(updateTime, 1000);
+  setStatus(prompt);
+  setWelcome(userMsg);
+
+  drawPuzzle(gameRows, gameCols);
+  showTopScores();
+  return true;
+}
+
+//Input: none
+//Output:none
+//Steps:
+//   Retrieve previous scores from userstats.php
+//   Populate info2 section
+function showTopScores() {
+  //document.getElementById("info2").innerHTML = "";
+
+  xmlHttp = new XMLHttpRequest();
+  xmlHttp.onreadystatechange = function() {
+    if(this.readyState == 4 && this.status == 200)
+      //alert(this.responseText);
+      document.getElementById("info2").innerHTML = this.responseText;
+  };
+ // alert(userIdToken + debugVar);
+  xmlHttp.open("GET","userStats.php?req=select&id=" + userIdToken + debugVar);
+  xmlHttp.send();
+
+}
+
+//Input: Welcome message
+//Output:none
+//Steps: Displays the requested message in welcome section
+function setWelcome(user) {
+  document.getElementById("welcome").innerHTML = user;
+}
+
+//Input:  Info/Error/message
+//Output: none
+//Steps:  Displays the requested information in footer section
+function setStatus(msg) {
+  document.getElementById("footer").innerHTML=msg;
+}
+
+//Input:  none
+//Output: none
+//Steps:
+//  Get current time
+//  Calculate the elapsed time
+//  Display elapsed time in h:mm:ss format in info section
+function updateTime(){
+  padStr = "0";
+  endTime = Date.now();
+  elapsedTime=(endTime - startTime);
+  newDate = new Date(elapsedTime - 3600000 * 5.5);
+  txtTimer.value= padStr.concat(newDate.getHours()).slice(-2) + ":" + padStr.concat(newDate.getMinutes()).slice(-2) + ":" + padStr.concat(newDate.getSeconds()).slice(-2);
+}
+
+//Input:  No of rows,No of columns
+//Output: none
+//Steps:
+//   Create a table in the main section with required no of rows and columns
+//   Add buttons with the required attributes to each table cell
+function drawPuzzle(rows, cols) {
+  //alert("346");
+  puzzleTable = document.createElement("TABLE");
+  for(i=0; i<rows; i++) {
+    puzzleRow = document.createElement("TR");
+    for(j=0; j<cols; j++) {
+      puzzleColumn = document.createElement("TD");
+      puzzleButton = document.createElement("INPUT");
+      puzzleButton.setAttribute("type","button");
+      puzzleButton.setAttribute("class", buttonClass);
+      puzzleButton.setAttribute("name","button" + (i*cols+j+1) );
+      puzzleButton.setAttribute("id","button" + (i*cols+j+1) );
+      blankPos = 1;
+      if(i == 0 && j == 0) {
+        puzzleButton.setAttribute("value", "" );
+      }
+      else {
+        puzzleButton.setAttribute("value", (i*cols+j) );
+      }
+      puzzleButton.setAttribute("onClick", "move(" + (i*cols+j+1) + ",gameCols)");
+     puzzleColumn.appendChild(puzzleButton);
+     puzzleRow.appendChild(puzzleColumn);
+     }
+   puzzleTable.appendChild(puzzleRow);
+   }
+   mainDiv = document.getElementById("main");
+   mainDiv.innerHTML = "";
+   mainDiv.appendChild(puzzleTable);
+}
+
+//Input:  Clicked button position,No of columns
+//Output: none
+//Steps:
+//   If the clicked button position is next to (lt,rt,btm,tp) the blank position exchange values
+//   Update game variables
+//   Display error message if a number which can''t be moved is clicked
+//   Verify if game is completed
+//   if completed
+//      Stop timer,display congratulations,disable game
+function move(myPos,Cols) {
+  if( (Math.abs(myPos-blankPos) == 1 && ((myPos+blankPos) % (2*Cols)) != 1) || Math.abs(myPos-blankPos) == Cols) {
+    //alert("you are moving a nbr");
+    document.getElementsByClassName(buttonClass)[blankPos - 1].value=document.getElementsByClassName(buttonClass)[myPos - 1].value
+    //alert(document.getElementsByTagName("input")[blankPos - 1].id);
+    document.getElementsByClassName(buttonClass)[myPos - 1].value="  ";
+    setStatus(prompt);
+
+    blankPos=myPos;
+    stepCount+=1;
+    stepsCount.value=stepCount;
+
+    //alert(check(gameRows*gameCols));
+    if(check(gameRows*gameCols - 1)) {
+      setStatus(finish);
+      clearInterval(myTimer);
+      if (userIdToken != "")
+        storeGameData();
+       allGameButtons=document.getElementsByClassName(buttonClass);
+      for(i=0; i<gameRows*gameCols; i++)
+        allGameButtons[i].disabled=true;
+      inGame=false;
+    }
+  }
+  else {
+    setStatus(invalid);
+  }
+}
+
+function storeGameData() {
+  //alert("783mxj");
+  steps = "&steps=" + stepCount;
+  elapsedTime = "&elapsed=" + txtTimer.value;
+  //alert(steps + "," + elapsedTime);
+  xmlHttp = new XMLHttpRequest();
+  xmlHttp.onreadystatechange = function() {
+    if(this.readyState == 4 && this.status == 200)
+      document.getElementById("footer").innerHTML += this.responseText;
+  };
+  xmlHttp.open("GET","userStats.php?req=store&id=" + userIdToken + steps + elapsedTime + debugVar);
+  xmlHttp.send();
+}
+
+//Input:  number of buttons
+//Output: true  - if complete
+//        false - if not complete
+//Steps:
+//   Verify if a number is not placed correctly
+function check(nbrButtons) {
+  allGameButtons = document.getElementsByClassName(buttonClass);
+  for(i=0; i < nbrButtons; i++)
+    if(allGameButtons[i].value != i+1)
+      return false;
+  return true;
+}
+
+//Input: none
+//Output:none
+//Steps:
+//   Set game no of rows and no of columns based on user selection
+//   Set the selection of game dimensions to current game dimensions if the reset of game is not confirmed
+function setDimensions() {
+  dimensions = document.getElementById("gameSize");
+
+  if ( ! initialize(dimensions.value.substr(0,1), dimensions.value.substr(2,3)) )
+    dimensions.value = gameRows + "x" + gameCols;
+
+}
+
+//Input:  Google user
+//Output: none
+//Steps:
+//   Get basic profile information
+//   Get google login token id
+//   Update welcome message
+//   Disable signout button
+//   Show latest scores of current user
+function onSignIn(googleUser) {
+    userIdToken = googleUser.getAuthResponse().id_token;
+    var profile = googleUser.getBasicProfile();
+
+    userMsg = "<font color=blue>Welcome&nbsp;</font>" + profile.getName();
+  //  userIdToken = profile.getEmail();
+    //alert(userIdToken);
+
+    setWelcome(userMsg);
+    showTopScores();
+    document.getElementById("signout").disabled=false;
+}
+
+//Input:  none
+//Output: none
+//Steps:
+//   Sign out google user
+//   Update welcome section
+//   Disable sign out button
+//   Show latest scores
+function onSignout() {
+    var auth2 = gapi.auth2.getAuthInstance().disconnect();
+
+    userMsg = guest;
+    userIdToken = "guest";
+    setWelcome(userMsg);
+    showTopScores();
+    document.getElementById("signout").disabled=true;
+}
+</script>
+</head>
+
+<body onload="initialize(3, 3);" style="font-size:25px;">
+
+<div name="welcome" id="welcome"> </div>
+
+<div name="header" id="header">
+
+  <select name="gameSize" onchange="setDimensions()" id="gameSize" style="width:100px;font-size:25px;border-style:none;background-color:whitesmoke;">
+    <option selected value="3x3" >3 x 3</option>
+    <option value="4x4">4 x 4</option>
+    <option value="5x5">5 x 5</option>
+  </select>
+
+  <input type="button" name="newGame" id="newGame" value="New Game" onClick="initialize(gameRows, gameCols);" style="font-size:25px; background-color: whitesmoke">
+</div>
+
+<div class="g-signin2" data-onsuccess="onSignIn"></div>
+
+<div name="gSignout" id="gSignout">
+  <input type="button" value="Sign Out" name="signout" id="signout" onclick="onSignout();"  style="font-size:25px; background-color: whitesmoke;" disabled>
+</div>
+
+<div name="main" id="main"> </div>
+
+<div name="info" id="info">
+   <input type="text" disabled name="stepsCount" id="stepsCount" value="000" style="width:50px;font-size:25px;border-style:none;background-color:whitesmoke;">
+   <label>Steps</label> &nbsp;&nbsp; &nbsp;&nbsp;
+   <input type="text" disabled name="txtTimer" id="txtTimer" value="0:00:00" style="width:125px;font-size:25px;border-style:none;background-color:whitesmoke;">
+</div>
+
+<div name="info2" id="info2" class = "preloader"> Loading Previous Scores..... </div>
+
+<div name="footer" id="footer"> </div>
+
+</body>
+</html>
